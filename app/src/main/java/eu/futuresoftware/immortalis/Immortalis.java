@@ -43,11 +43,17 @@ import java.util.Set;
 
 public class Immortalis implements Application.ActivityLifecycleCallbacks {
 
-    private String TAG = "Immortalis";
+    private static String TAG = "Immortalis";
     private Context c;
     private Set<String> activitiesActive = new HashSet<String>();
+    private boolean backupMode = false;
 
-    Immortalis(Context c, boolean restartDisabled) {
+    private static int ALARM_SHORT = 0;
+    private static int ALARM_LONG = 1;
+
+    private static String MSG_RESPAWN = "RESPAWN";
+
+    public Immortalis(Context c, boolean restartDisabled) {
         this.c = c;
         if (restartDisabled) {
             Log.w(TAG, "Restart disabled");
@@ -74,30 +80,63 @@ public class Immortalis implements Application.ActivityLifecycleCallbacks {
     //// Public Methods
     ////////////////////////////////////////////////////////////////////////////////////////////////
     public void appStarted(Intent i) {
-        if (i.getBooleanExtra("RESPAWN", false)) {
+        if (i.getBooleanExtra(MSG_RESPAWN, false)) {
             Log.w(TAG, "Respawned by Immortalis ");
         }
     }
 
     public void onBackPressed() {
-        cancelAlarms();
         Log.w(TAG, "App stopped with back button press. Immortalis disabled");
+        pause();
         System.exit(0);
     }
 
+    public void pause() {
+        Log.w(TAG, "Immortalis paused.");
+        cancelAlarms();
+    }
+
+    public void resume() {
+        Log.w(TAG, "Immortalis resumed.");
+        startAlarms();
+    }
+
+    public void startBackupMode() {
+        // Stop timers and start only the backup alarm so we have 30 seconds
+        Log.w(TAG, "Immortalis backup mode activated.");
+        backupMode = true;
+        cancelAlarms();
+        startAlarm(ALARM_LONG); // Backup alarm
+    }
+
+    public void resetShortAlarm() {
+        cancelAlarm(ALARM_SHORT);
+        startAlarm(ALARM_SHORT);
+    }
+
+    public void resetLongAlarm() {
+        cancelAlarm(ALARM_LONG);
+        startAlarm(ALARM_LONG);
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //// Private Methods
     ////////////////////////////////////////////////////////////////////////////////////////////////
     private void startAlarms() {
-        startAlarm(0); // Short
-        startAlarm(1); // Long
+        startAlarm(ALARM_SHORT); // Short
+        startAlarm(ALARM_LONG); // Long
     }
 
     private void alarmReceived(int alarmId) {
         //Log.d(TAG, "Alarm received: " + (alarmId == 0 ? "short" : "long"));
         startAlarm(alarmId);
         checkIfStillRunningInForeground();
+
+        // If running in backupmode, start the quick alarm at first backup alarm received
+        if (backupMode && alarmId == ALARM_LONG) {
+            backupMode = false;
+            startAlarm(ALARM_SHORT);
+        }
     }
 
     private void checkIfStillRunningInForeground() {
@@ -109,15 +148,14 @@ public class Immortalis implements Application.ActivityLifecycleCallbacks {
 
     private void restartApp() {
         Intent i = new Intent(c, MainActivity.class);
-        i.putExtra("RESPAWN", true);
+        i.putExtra(MSG_RESPAWN, true);
         i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
         c.startActivity(i);
     }
 
     private void startAlarm(int alarmId) {
-        //Log.d(TAG, "Setting alarm " + alarmId);
         PendingIntent pendingIntent = makePendingIntent(alarmId);
-        long time = System.currentTimeMillis() + (alarmId == 0 ? 3000 : 30000); // 3s and 30s as backup
+        long time = System.currentTimeMillis() + (alarmId == ALARM_SHORT ? 3100 : 30000); // 3.1s and 30s as backup
         int SDK_INT = Build.VERSION.SDK_INT;
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
         if (am != null) {
@@ -136,18 +174,13 @@ public class Immortalis implements Application.ActivityLifecycleCallbacks {
     private PendingIntent makePendingIntent(int alarmId) {
         Intent intent = new Intent(c, ImmortalisBroadcastReceiver.class);
         intent.putExtra("alarmId", alarmId);
-        return PendingIntent.getBroadcast(
-                c,
-                alarmId,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT
-        );
+        return PendingIntent.getBroadcast(c, alarmId, intent, PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     private void cancelAlarms() {
         Log.d(TAG, "Cancelling alarms");
-        cancelAlarm(0);
-        cancelAlarm(1);
+        cancelAlarm(ALARM_SHORT);
+        cancelAlarm(ALARM_LONG);
     }
 
     private void cancelAlarm(int alarmId) {
@@ -166,7 +199,7 @@ public class Immortalis implements Application.ActivityLifecycleCallbacks {
     @Override
     public void onActivityStarted(Activity activity) {
         String activityName = activity.getClass().getSimpleName();
-        if (!activitiesActive.contains(activityName)) { activitiesActive.add(activityName); }
+        activitiesActive.add(activityName);
         Log.d(TAG, String.valueOf(activitiesActive.size()) + " activities active");
     }
 
@@ -197,7 +230,12 @@ public class Immortalis implements Application.ActivityLifecycleCallbacks {
     public static class ImmortalisBroadcastReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
-            MyApplication.getContext().getImmortalis().alarmReceived(intent.getExtras() != null ? intent.getExtras().getInt("alarmId", 0) : 0);
+            // Receiver for internal Immortalis alarms and external app signaling to stop/start this app
+
+            // Internal Immortalis alarm?
+            Bundle bundle = intent.getExtras();
+            if (bundle == null || !bundle.containsKey("alarmId")) return;
+            MyApplication.getContext().getImmortalis().alarmReceived(bundle.getInt("alarmId", ALARM_SHORT));
         }
     }
 }
