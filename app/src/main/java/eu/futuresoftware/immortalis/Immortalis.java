@@ -11,6 +11,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 
+import com.github.anrwatchdog.ANRWatchDog;
+
 import java.util.HashSet;
 import java.util.Set;
 
@@ -18,8 +20,9 @@ import java.util.Set;
  * Immortalis, meaning immortal is created by Boudewijn van Breukelen on April 26th 2019
  * This class will keep the Android app alive in most conditions:
  * Crash: Catched, uses Crashlytics (if initiated after Immortalis) and then restarts the app
- * Background: Pulls app beck into foreground
+ * Background: Pulls app back into foreground
  * Android memory cleaning: Restarts the app
+ * ANRs: Will crash the app and restart it after 5 seconds
  *
  * Known scenario's that stop the app:
  *   Press back button/escape key/right mouse key (disables Immortalis)
@@ -28,6 +31,7 @@ import java.util.Set;
  *
  * Usage:
  * Create an application class extending the Android application MyApplication.
+ * Add implementation 'com.github.anrwatchdog:anrwatchdog:1.4.0' to gradle
  * in onCreate:
  *   immortalis = new Immortalis(this, BuildConfig.DEBUG);
  *   registerActivityLifecycleCallbacks(immortalis);
@@ -48,8 +52,8 @@ public class Immortalis implements Application.ActivityLifecycleCallbacks {
     private Set<String> activitiesActive = new HashSet<String>();
     private boolean backupMode = false;
 
-    private static int ALARM_SHORT = 0;
-    private static int ALARM_LONG = 1;
+    public static int ALARM_SHORT = 0;
+    public static int ALARM_LONG = 1;
 
     private static String MSG_RESPAWN = "RESPAWN";
 
@@ -70,6 +74,21 @@ public class Immortalis implements Application.ActivityLifecycleCallbacks {
                 System.exit(2);
             }
         });
+
+        // Start ANR watchdog
+        new ANRWatchDog(2500)
+                .setIgnoreDebugger(true)
+                .setReportMainThreadOnly()
+                .setANRInterceptor(new ANRWatchDog.ANRInterceptor() {
+                    @Override
+                    public long intercept(long duration) {
+                        long ret = 5000 - duration;
+                        Log.e("ANRWatchdog", "Detected an ANR of " + duration + "ms. Will crash when hanging for 5000ms in total.");
+                        Immortalis.this.resetShortAlarm();
+                        return ret;
+                    }
+                })
+                .start();
 
         // Start alarms
         startAlarms();
@@ -199,7 +218,7 @@ public class Immortalis implements Application.ActivityLifecycleCallbacks {
     @Override
     public void onActivityStarted(Activity activity) {
         String activityName = activity.getClass().getSimpleName();
-        activitiesActive.add(activityName);
+        if (!activitiesActive.contains(activityName)) { activitiesActive.add(activityName); }
         Log.d(TAG, String.valueOf(activitiesActive.size()) + " activities active");
     }
 
