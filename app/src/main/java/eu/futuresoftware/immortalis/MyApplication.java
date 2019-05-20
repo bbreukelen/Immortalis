@@ -11,11 +11,8 @@ public class MyApplication extends Application {
     public void onCreate() {
         super.onCreate();
         mContext = this;
-
         immortalis = new Immortalis(this, false); // Remove after debugging
-
         registerActivityLifecycleCallbacks(immortalis);
-
         //Fabric.with(this, new Crashlytics()); (optional, if you're using Crashlytics)
     }
 
