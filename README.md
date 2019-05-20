@@ -78,5 +78,5 @@ public void onBackPressed() {
 ````
 
 #### Donate
-If you like this code, please consider donating. This is optional of course.
-[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](bbreukelen)
+If you like this code, please consider donating. This is optional of course.  
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://paypal.me/bbreukelen)
