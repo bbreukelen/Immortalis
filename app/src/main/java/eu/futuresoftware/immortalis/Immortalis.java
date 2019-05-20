@@ -32,8 +32,8 @@ public class Immortalis implements Application.ActivityLifecycleCallbacks {
     private long activitiesActiveLastChanged = 0;
     private boolean backupMode = false;
 
-    public static int ALARM_SHORT = 0;
-    public static int ALARM_LONG = 1;
+    private static int ALARM_SHORT = 0;
+    private static int ALARM_LONG = 1;
 
     private static String MSG_RESPAWN = "RESPAWN";
 
