@@ -1,5 +1,6 @@
 package eu.futuresoftware.immortalis;
 
+import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -20,6 +21,15 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 Log.e("Test", "Crash button pressed");
                 throw new NullPointerException(); // Force crash
+            }
+        });
+
+        findViewById(R.id.button2).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.e("Test", "open Activity 2 button pressed");
+                startActivity(new Intent(MainActivity.this, Main2Activity.class));
+                finish();
             }
         });
     }

@@ -49,7 +49,8 @@ public class Immortalis implements Application.ActivityLifecycleCallbacks {
 
     private static String TAG = "Immortalis";
     private Context c;
-    private Set<String> activitiesActive = new HashSet<String>();
+    private int activitiesActive = 0;
+    private long activitiesActiveLastChanged = 0;
     private boolean backupMode = false;
 
     public static int ALARM_SHORT = 0;
@@ -159,7 +160,11 @@ public class Immortalis implements Application.ActivityLifecycleCallbacks {
     }
 
     private void checkIfStillRunningInForeground() {
-        if (activitiesActive.size() == 0) {
+        // Check if no activities for a while. The lastChanged condition is there to avoid acting
+        // acting on something that's still in process. For instance a screen rotation stops the activity
+        // and restarts it a short while later. 1500ms is quite a long time, but we don't need it to
+        // restart super quick, as long as it will eventually restart and bring the app back to the foreground
+        if (activitiesActive == 0 && System.currentTimeMillis() > activitiesActiveLastChanged + 1500) {
             Log.e(TAG, "Not running in foreground. Pulling back to the front.");
             restartApp();
         }
@@ -217,9 +222,9 @@ public class Immortalis implements Application.ActivityLifecycleCallbacks {
 
     @Override
     public void onActivityStarted(Activity activity) {
-        String activityName = activity.getClass().getSimpleName();
-        if (!activitiesActive.contains(activityName)) { activitiesActive.add(activityName); }
-        Log.d(TAG, String.valueOf(activitiesActive.size()) + " activities active");
+        activitiesActiveLastChanged = System.currentTimeMillis();
+        activitiesActive++;
+        Log.d(TAG, String.valueOf(activitiesActive) + " activities active");
     }
 
     @Override
@@ -230,10 +235,9 @@ public class Immortalis implements Application.ActivityLifecycleCallbacks {
 
     @Override
     public void onActivityStopped(Activity activity) {
-        if (activity.isChangingConfigurations()) return; // Don't remove when rotating screen etc
-        String activityName = activity.getClass().getSimpleName();
-        if (activitiesActive.contains(activityName)) { activitiesActive.remove(activityName); }
-        Log.d(TAG, String.valueOf(activitiesActive.size()) + " activities active");
+        activitiesActiveLastChanged = System.currentTimeMillis();
+        activitiesActive--;
+        Log.d(TAG, String.valueOf(activitiesActive) + " activities active");
     }
 
     @Override
