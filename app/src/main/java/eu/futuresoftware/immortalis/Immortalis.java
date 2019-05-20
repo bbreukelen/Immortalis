@@ -17,32 +17,11 @@ import java.util.HashSet;
 import java.util.Set;
 
 /*
- * Immortalis, meaning immortal is created by Boudewijn van Breukelen on April 26th 2019
- * This class will keep the Android app alive in most conditions:
- * Crash: Catched, uses Crashlytics (if initiated after Immortalis) and then restarts the app
- * Background: Pulls app back into foreground
- * Android memory cleaning: Restarts the app
- * ANRs: Will crash the app and restart it after 5 seconds
+ * Immortalis by Future Software https://github.com/bbreukelen/Immortalis
+ * This class will keep the Android app alive no matter what
  *
- * Known scenario's that stop the app:
- *   Press back button/escape key/right mouse key (disables Immortalis)
- *   Force stop app from Settings > Apps (cleans alarms, if you're quick)
- *   Killing app from Android Studio (cleans alarms)
- *
- * Usage:
- * Create an application class extending the Android application MyApplication.
- * Add implementation 'com.github.anrwatchdog:anrwatchdog:1.4.0' to gradle
- * in onCreate:
- *   immortalis = new Immortalis(this, BuildConfig.DEBUG);
- *   registerActivityLifecycleCallbacks(immortalis);
- *   (optional) Fabric.with(this, new Crashlytics());
- * Add getter method getImmortalis() { return immortalis; }
- *
- * Add to Manifest: <receiver android:name=".Immortalis$ImmortalisBroadcastReceiver" />
- * Add to Primary Activity in onCreate: MyApplication.getContext().getImmortalis().appStarted(getIntent());
- * Add to all Activities: public void onBackPressed() { MyApplication.getContext().getImmortalis().onBackPressed(); }
- *
- * On the Immortalis constructor, if the 2nd parameter is true, restarts are disabled (for debugging)
+ * On the Immortalis constructor, if the 2nd parameter is true, restarts are disabled
+ * You can replace this with BuildConfig.DEBUG to disable Immortalis while debugging your application
  */
 
 public class Immortalis implements Application.ActivityLifecycleCallbacks {
